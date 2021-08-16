@@ -340,4 +340,4 @@ moduleInLinkNotExposed =
 
 linkPointsToNonExistentMemberDetails : List String
 linkPointsToNonExistentMemberDetails =
-    [ "Links should point to exposed package members." ]
+    [ "Links are only useful when they point to exposed package members." ]
