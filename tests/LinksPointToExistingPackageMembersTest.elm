@@ -12,9 +12,10 @@ import Testable exposing (definitionInLinkNotExposedMessage, linkPointsToNonExis
 all : Test
 all =
     describe "LinksPointToExistingPackageMembers"
-        [ test "succeeds"
-            (\() ->
-                """module A.And.B exposing (a, b)
+        [ describe "succeeds"
+            [ test "exposed function"
+                (\() ->
+                    """module A.And.B exposing (a, b)
 
 b =
     "b"
@@ -24,14 +25,58 @@ b =
 a =
     "a"
 """
-                    |> Review.Test.runWithProjectData
-                        (Project.new
-                            |> Project.addElmJson
-                                (elmJson { exposedModules = [ "A.And.B" ] })
-                        )
-                        rule
-                    |> Review.Test.expectNoErrors
-            )
+                        |> Review.Test.runWithProjectData
+                            (Project.new
+                                |> Project.addElmJson
+                                    (elmJson { exposedModules = [ "A.And.B" ] })
+                            )
+                            rule
+                        |> Review.Test.expectNoErrors
+                )
+            , test "exposed alias"
+                (\() ->
+                    """module A.And.B exposing (a, B)
+
+type alias B =
+    B
+
+{-| Not [`B`](A-And-B#B).
+-}
+a =
+    "a"
+"""
+                        |> Review.Test.runWithProjectData
+                            (Project.new
+                                |> Project.addElmJson
+                                    (elmJson { exposedModules = [ "A.And.B" ] })
+                            )
+                            rule
+                        |> Review.Test.expectNoErrors
+                )
+            , test "definition exposed in different module"
+                (\() ->
+                    [ """module A exposing (a)
+
+{-| Not [`b`](B#b).
+-}
+a =
+    "a"
+"""
+                    , """module B exposing (b)
+
+b =
+    "b"
+"""
+                    ]
+                        |> Review.Test.runOnModulesWithProjectData
+                            (Project.new
+                                |> Project.addElmJson
+                                    (elmJson { exposedModules = [ "A", "B" ] })
+                            )
+                            rule
+                        |> Review.Test.expectNoErrors
+                )
+            ]
         , describe "fails"
             [ describe "definition link"
                 [ test "because it isn't exposed"

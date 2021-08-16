@@ -1,9 +1,7 @@
 module ParserExtra exposing (find)
 
-import Elm.Syntax.Range exposing (Location, Range)
+import Elm.Syntax.Range exposing (Range)
 import Parser exposing ((|.), (|=), Parser)
-import Parser.Extras as Parser
-import SyntaxHelp exposing (addLocation)
 
 
 find : Parser a -> Parser (List { parsed : a, range : Range })

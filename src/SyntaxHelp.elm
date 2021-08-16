@@ -1,11 +1,11 @@
-module SyntaxHelp exposing (Link, LinkKind(..), ModuleInfo, addLocation, addRange, docOfDeclaration, isExposed, linkParser, moduleInfo)
+module SyntaxHelp exposing (Link, LinkKind(..), ModuleInfo, addLocation, docOfDeclaration, isExposed, linkParser, moduleInfo)
 
 import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Documentation exposing (Documentation)
 import Elm.Syntax.Exposing exposing (Exposing(..), TopLevelExpose(..))
 import Elm.Syntax.Module exposing (Module(..))
 import Elm.Syntax.Node as Node exposing (Node)
-import Elm.Syntax.Range exposing (Location, Range)
+import Elm.Syntax.Range exposing (Location)
 import Parser exposing ((|.), (|=), Parser)
 import Parser.Extras as Parser
 
@@ -86,13 +86,6 @@ nameOfExpose expose =
 
         TypeExpose { name } ->
             name
-
-
-addRange : Range -> Range -> Range
-addRange aRange bRange =
-    { start = addLocation aRange.start bRange.start
-    , end = addLocation aRange.end bRange.end
-    }
 
 
 addLocation : Location -> Location -> Location

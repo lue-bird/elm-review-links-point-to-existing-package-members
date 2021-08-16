@@ -6,10 +6,8 @@ module LinksPointToExistingPackageMembers exposing (rule)
 
 -}
 
-import Dict
-import Elm.Module as Module exposing (Name(..))
+import Elm.Module as Module
 import Elm.Project as Project
-import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Exposing as Exposing
 import Elm.Syntax.Node as Node exposing (Node(..))
 import Parser
@@ -76,8 +74,8 @@ rule =
                                     Project.ExposedList exposedList ->
                                         exposedList
 
-                                    Project.ExposedDict exposedDict ->
-                                        exposedDict
+                                    Project.ExposedDict fakeDict ->
+                                        fakeDict
                                             |> List.concatMap (\( _, names ) -> names)
                         in
                         exposedModules
@@ -125,11 +123,10 @@ rule =
 
 
 checkLinks : List ModuleInfo -> Node String -> List (Rule.Error {})
-checkLinks moduleInfo doc =
+checkLinks moduleInfos doc =
     (doc |> Node.value)
         |> Parser.run (Parser.find linkParser)
-        |> Result.toMaybe
-        |> Maybe.withDefault []
+        |> (Maybe.withDefault [] << Result.toMaybe)
         |> List.concatMap
             (\match ->
                 let
@@ -151,7 +148,7 @@ checkLinks moduleInfo doc =
                 case kind of
                     ModuleLink ->
                         if
-                            moduleInfo
+                            moduleInfos
                                 |> List.any
                                     (.moduleName >> (==) moduleNameParts)
                         then
@@ -167,7 +164,7 @@ checkLinks moduleInfo doc =
 
                     DefinitionLink definition ->
                         if
-                            moduleInfo
+                            moduleInfos
                                 |> List.any
                                     (\m ->
                                         m.moduleName
