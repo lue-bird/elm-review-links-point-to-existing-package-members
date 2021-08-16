@@ -5,9 +5,8 @@ import Elm.Project as Project
 import Elm.Syntax.Declaration exposing (Declaration)
 import Elm.Syntax.Exposing as Exposing
 import Elm.Syntax.Node as Node exposing (Node(..))
-import Elm.Syntax.Range exposing (Location, Range)
+import Elm.Syntax.Range exposing (Range)
 import EverySet as Set exposing (EverySet)
-import Parser
 import ParserExtra as Parser
 import Review.Rule as Rule exposing (Rule)
 import SyntaxHelp exposing (Link, LinkKind(..), ModuleInfo, addLocation, docOfDeclaration, exposedModules, isExposed, linkParser, moduleInfo)

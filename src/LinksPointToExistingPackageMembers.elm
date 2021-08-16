@@ -6,10 +6,8 @@ module LinksPointToExistingPackageMembers exposing (rule)
 
 -}
 
-import Elm.Syntax.Node exposing (Node(..))
 import LinksPointToExistingPackageMembers.NotExposed
 import Review.Rule exposing (Rule)
-import SyntaxHelp exposing (LinkKind(..))
 
 
 {-| Reports links to nonexistent package definitions or modules.
