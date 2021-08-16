@@ -131,32 +131,32 @@ a =
                                     }
                                 ]
                     )
-                , test "in readme"
-                    (\() ->
-                        """module A exposing (a)
+                ]
+            , test "in readme"
+                (\() ->
+                    """module A exposing (a)
 
 a =
     "a"
 """
-                            |> Review.Test.runWithProjectData
-                                (Project.new
-                                    |> Project.addElmJson
-                                        (elmJson { exposedModules = [ "A" ] })
-                                    |> Project.addReadme
-                                        { path = "README.md"
-                                        , content = "See [`B`](B)."
-                                        }
-                                )
-                                rule
-                            |> Review.Test.expectErrorsForReadme
-                                [ Review.Test.error
-                                    { message = moduleInLinkNotExposed
-                                    , details = linkPointsToNonExistentMemberDetails
-                                    , under = "[`B`](B)"
+                        |> Review.Test.runWithProjectData
+                            (Project.new
+                                |> Project.addElmJson
+                                    (elmJson { exposedModules = [ "A" ] })
+                                |> Project.addReadme
+                                    { path = "README.md"
+                                    , content = "See [`B`](B)."
                                     }
-                                ]
-                    )
-                ]
+                            )
+                            rule
+                        |> Review.Test.expectErrorsForReadme
+                            [ Review.Test.error
+                                { message = moduleInLinkNotExposed
+                                , details = linkPointsToNonExistentMemberDetails
+                                , under = "[`B`](B)"
+                                }
+                            ]
+                )
             , test "module link because it isn't in exposed-modules"
                 (\() ->
                     """module A.And.B exposing (a, b)
@@ -180,6 +180,33 @@ a =
                                 { message = moduleInLinkNotExposed
                                 , details = linkPointsToNonExistentMemberDetails
                                 , under = "[`A.And.B`](A-And-B)"
+                                }
+                            ]
+                )
+            , test "in file comment"
+                (\() ->
+                    """module A.And.B exposing (a)
+
+{-| Contains a and [`b`](A-And-B#b).
+-}
+
+b =
+    "b"
+
+a =
+    "a"
+"""
+                        |> Review.Test.runWithProjectData
+                            (Project.new
+                                |> Project.addElmJson
+                                    (elmJson { exposedModules = [ "A.And.B" ] })
+                            )
+                            rule
+                        |> Review.Test.expectErrors
+                            [ Review.Test.error
+                                { message = definitionInLinkNotExposedMessage
+                                , details = linkPointsToNonExistentMemberDetails
+                                , under = "[`b`](A-And-B#b)"
                                 }
                             ]
                 )

@@ -1,4 +1,4 @@
-module SyntaxHelp exposing (Link, LinkKind(..), ModuleInfo, addLocation, docOfDeclaration, exposedModules, isExposed, linkParser, moduleInfo)
+module SyntaxHelp exposing (Link, LinkKind(..), ModuleInfo, addLocation, docOfDeclaration, exposedModules, isExposed, isFileComment, linkParser, moduleInfo)
 
 import Elm.Module as Module
 import Elm.Project as Project
@@ -88,6 +88,11 @@ nameOfExpose expose =
 
         TypeExpose { name } ->
             name
+
+
+isFileComment : String -> Bool
+isFileComment =
+    String.startsWith "{-|"
 
 
 exposedModules : Project.Exposed -> List Module.Name

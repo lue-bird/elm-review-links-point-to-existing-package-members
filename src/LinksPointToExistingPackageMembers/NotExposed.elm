@@ -1,15 +1,16 @@
 module LinksPointToExistingPackageMembers.NotExposed exposing (definitionInLinkNotExposedMessage, linkPointsToNonExistentMemberDetails, moduleInLinkNotExposed, rule)
 
 import Elm.Module as Module
-import Elm.Project as Project
+import Elm.Project as Project exposing (Project)
 import Elm.Syntax.Declaration exposing (Declaration)
 import Elm.Syntax.Exposing as Exposing
+import Elm.Syntax.Module exposing (Module)
 import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.Range exposing (Range)
 import EverySet as Set exposing (EverySet)
 import ParserExtra as Parser
 import Review.Rule as Rule exposing (Rule)
-import SyntaxHelp exposing (Link, LinkKind(..), ModuleInfo, addLocation, docOfDeclaration, exposedModules, isExposed, linkParser, moduleInfo)
+import SyntaxHelp exposing (Link, LinkKind(..), ModuleInfo, addLocation, docOfDeclaration, exposedModules, isExposed, isFileComment, linkParser, moduleInfo)
 
 
 type alias Set a =
@@ -68,123 +69,82 @@ rule : Rule
 rule =
     Rule.newProjectRuleSchema "LinksPointToExistingPackageMembers"
         { exposed = Set.empty
-        , inDeclarationDoc = Set.empty
-        , readme = Nothing
+        , inModules = Set.empty
+        , inReadme = Nothing
         }
         |> Rule.withReadmeProjectVisitor
-            (\maybeReadme context ->
-                ( []
-                , case maybeReadme of
-                    Just { readmeKey, content } ->
-                        { context
-                            | readme =
-                                { key = readmeKey
-                                , links =
-                                    content
-                                        |> Parser.find linkParser
-                                        |> List.map
-                                            (\match ->
-                                                let
-                                                    indexedStartingAt1 start =
-                                                        { row = start.row + 1, column = start.column + 1 }
-                                                in
-                                                { match
-                                                    | range =
-                                                        { start = indexedStartingAt1 match.range.start
-                                                        , end = indexedStartingAt1 match.range.end
-                                                        }
-                                                }
-                                            )
-                                        |> Set.fromList
-                                }
-                                    |> Just
-                        }
-
-                    Nothing ->
-                        context
-                )
-            )
+            linksInReadme
         |> Rule.withElmJsonProjectVisitor
-            (\maybeProject context ->
-                ( []
-                , { context
-                    | exposed =
-                        case maybeProject of
-                            Just { project } ->
-                                case project of
-                                    Project.Package { exposed } ->
-                                        exposedModules exposed
-                                            |> Set.fromList
-                                            |> Set.map
-                                                (\name ->
-                                                    { moduleName = name |> Module.toString |> String.split "."
-                                                    , exposedDefinitions = Exposing.Explicit []
-                                                    }
-                                                )
-
-                                    Project.Application _ ->
-                                        Set.empty
-
-                            Nothing ->
-                                Set.empty
-                  }
-                )
-            )
+            exposedModulesInElmJson
         |> Rule.withModuleVisitor
             (Rule.withModuleDefinitionVisitor
-                (\(Node _ module_) context ->
-                    ( []
-                    , { context
-                        | exposed =
-                            let
-                                info =
-                                    module_ |> moduleInfo
-                            in
-                            if
-                                context.exposed
-                                    |> Set.toList
-                                    |> List.any
-                                        (.moduleName
-                                            >> (==) info.moduleName
-                                        )
-                            then
-                                context.exposed |> Set.insert info
-
-                            else
-                                context.exposed
-                      }
-                    )
-                )
+                exposedInModule
                 >> Rule.withDeclarationEnterVisitor
-                    linksInDeclaration
+                    (\(Node _ declaration) context ->
+                        ( []
+                        , declaration
+                            |> docOfDeclaration
+                            |> Maybe.map
+                                (\doc ->
+                                    { context
+                                        | linksInDoc =
+                                            Set.union context.linksInDoc
+                                                (linksIn doc)
+                                    }
+                                )
+                            |> Maybe.withDefault context
+                        )
+                    )
+                >> Rule.withCommentsVisitor
+                    (\comments context ->
+                        ( []
+                        , comments
+                            |> List.filter
+                                (isFileComment << Node.value)
+                            |> List.head
+                            |> Maybe.map
+                                (\fileComment ->
+                                    { context
+                                        | linksInDoc =
+                                            Set.union context.linksInDoc
+                                                (linksIn fileComment)
+                                    }
+                                )
+                            |> Maybe.withDefault context
+                        )
+                    )
             )
         |> (let
                 toModule : ProjectContext -> ModuleContext
                 toModule context =
                     { exposed = context.exposed
-                    , inDeclarationDoc = Set.empty
+                    , linksInDoc = Set.empty
                     }
 
-                toProject : Rule.ModuleKey -> name_ -> ModuleContext -> ProjectContext
-                toProject moduleKey _ { exposed, inDeclarationDoc } =
-                    { readme = Nothing
+                toProject :
+                    Rule.ModuleKey
+                    -> name_
+                    -> ModuleContext
+                    -> ProjectContext
+                toProject moduleKey _ { exposed, linksInDoc } =
+                    { inReadme = Nothing
                     , exposed = exposed
-                    , inDeclarationDoc =
+                    , inModules =
                         Set.singleton
-                            { moduleKey = moduleKey
-                            , links = inDeclarationDoc
+                            { key = moduleKey
+                            , links = linksInDoc
                             }
                     }
 
                 merge : ProjectContext -> ProjectContext -> ProjectContext
                 merge a b =
                     { exposed = Set.union a.exposed b.exposed
-                    , inDeclarationDoc =
-                        Set.union a.inDeclarationDoc b.inDeclarationDoc
-                    , readme =
-                        a.readme
+                    , inModules =
+                        Set.union a.inModules b.inModules
+                    , inReadme =
+                        a.inReadme
                             |> Maybe.map Just
-                            |> Maybe.withDefault b.readme
+                            |> Maybe.withDefault b.inReadme
                     }
             in
             Rule.withModuleContext
@@ -193,151 +153,220 @@ rule =
                 , foldProjectContexts = merge
                 }
            )
-        |> Rule.withFinalProjectEvaluation
-            (\{ readme, exposed, inDeclarationDoc } ->
-                let
-                    checkLink error match =
-                        let
-                            { moduleName, kind } =
-                                match.parsed
-
-                            moduleNameParts =
-                                let
-                                    ( first, tail ) =
-                                        moduleName
-                                in
-                                first :: tail
-                        in
-                        case kind of
-                            ModuleLink ->
-                                if
-                                    exposed
-                                        |> Set.toList
-                                        |> List.any
-                                            (.moduleName
-                                                >> (==) moduleNameParts
-                                            )
-                                then
-                                    []
-
-                                else
-                                    [ error
-                                        { message = moduleInLinkNotExposed
-                                        , details = linkPointsToNonExistentMemberDetails
-                                        }
-                                        match.range
-                                    ]
-
-                            DefinitionLink definition ->
-                                if
-                                    exposed
-                                        |> Set.toList
-                                        |> List.any
-                                            (\m ->
-                                                (m.moduleName == moduleNameParts)
-                                                    && (m.exposedDefinitions
-                                                            |> isExposed definition
-                                                       )
-                                            )
-                                then
-                                    []
-
-                                else
-                                    [ error
-                                        { message = definitionInLinkNotExposedMessage
-                                        , details = linkPointsToNonExistentMemberDetails
-                                        }
-                                        match.range
-                                    ]
-                in
-                [ readme
-                    |> Maybe.map
-                        (\{ key, links } ->
-                            links
-                                |> Set.toList
-                                |> List.concatMap
-                                    (checkLink (Rule.errorForReadme key))
-                        )
-                    |> Maybe.withDefault []
-                , inDeclarationDoc
-                    |> Set.toList
-                    |> List.concatMap
-                        (\{ moduleKey, links } ->
-                            links
-                                |> Set.toList
-                                |> List.concatMap
-                                    (checkLink (Rule.errorForModule moduleKey))
-                        )
-                ]
-                    |> List.concat
-            )
+        |> Rule.withFinalProjectEvaluation check
         |> Rule.fromProjectRuleSchema
 
 
+exposedModulesInElmJson :
+    Maybe { elmJsonKey : Rule.ElmJsonKey, project : Project }
+    -> ProjectContext
+    -> ( List (Rule.Error e_), ProjectContext )
+exposedModulesInElmJson maybeProject context =
+    ( []
+    , { context
+        | exposed =
+            case maybeProject of
+                Just { project } ->
+                    case project of
+                        Project.Package { exposed } ->
+                            exposedModules exposed
+                                |> Set.fromList
+                                |> Set.map
+                                    (\name ->
+                                        { moduleName =
+                                            name |> Module.toString |> String.split "."
+                                        , exposedDefinitions = Exposing.Explicit []
+                                        }
+                                    )
+
+                        Project.Application _ ->
+                            Set.empty
+
+                Nothing ->
+                    Set.empty
+      }
+    )
+
+
 type alias ProjectContext =
-    { readme :
+    { inReadme :
         Maybe
             { key : Rule.ReadmeKey
             , links :
-                Set
-                    { parsed : Link
-                    , range : Range
-                    }
+                Set { parsed : Link, range : Range }
             }
-    , inDeclarationDoc :
+    , inModules :
         Set
-            { moduleKey : Rule.ModuleKey
+            { key : Rule.ModuleKey
             , links :
-                Set
-                    { parsed : Link
-                    , range : Range
-                    }
+                Set { parsed : Link, range : Range }
             }
     , exposed : Set ModuleInfo
     }
 
 
 type alias ModuleContext =
-    { inDeclarationDoc :
-        Set
-            { parsed : Link
-            , range : Range
-            }
+    { linksInDoc :
+        Set { parsed : Link, range : Range }
     , exposed : Set ModuleInfo
     }
 
 
-linksInDeclaration : Node Declaration -> ModuleContext -> ( List error_, ModuleContext )
-linksInDeclaration (Node _ declaration) context =
+linksIn : Node String -> Set { parsed : Link, range : Range }
+linksIn fileComment =
+    fileComment
+        |> Node.value
+        |> Parser.find linkParser
+        |> List.map
+            (\match ->
+                { match
+                    | range =
+                        let
+                            inComment =
+                                addLocation (Node.range fileComment).start
+                        in
+                        { start = inComment match.range.start
+                        , end = inComment match.range.end
+                        }
+                }
+            )
+        |> Set.fromList
+
+
+linksInReadme :
+    Maybe { readmeKey : Rule.ReadmeKey, content : String }
+    -> ProjectContext
+    -> ( List error_, ProjectContext )
+linksInReadme maybeReadme context =
+    ( []
+    , case maybeReadme of
+        Just { readmeKey, content } ->
+            { context
+                | inReadme =
+                    { key = readmeKey
+                    , links =
+                        let
+                            at1 =
+                                { row = 1, column = 1 }
+                        in
+                        linksIn
+                            (Node { start = at1, end = at1 }
+                                content
+                            )
+                    }
+                        |> Just
+            }
+
+        Nothing ->
+            context
+    )
+
+
+exposedInModule :
+    Node Module
+    -> ModuleContext
+    -> ( List error_, ModuleContext )
+exposedInModule (Node _ module_) context =
     ( []
     , { context
-        | inDeclarationDoc =
-            declaration
-                |> docOfDeclaration
-                |> Maybe.map
-                    (\doc ->
-                        doc
-                            |> Node.value
-                            |> Parser.find linkParser
-                            |> List.map
-                                (\match ->
-                                    { match
-                                        | range =
-                                            let
-                                                inDoc =
-                                                    addLocation (Node.range doc).start
-                                            in
-                                            { start = inDoc match.range.start
-                                            , end = inDoc match.range.end
-                                            }
-                                    }
-                                )
-                            |> Set.fromList
-                            |> Set.union context.inDeclarationDoc
-                    )
-                |> Maybe.withDefault context.inDeclarationDoc
+        | exposed =
+            let
+                info =
+                    module_ |> moduleInfo
+            in
+            if
+                context.exposed
+                    |> Set.toList
+                    |> List.any
+                        (.moduleName
+                            >> (==) info.moduleName
+                        )
+            then
+                context.exposed |> Set.insert info
+
+            else
+                context.exposed
       }
     )
+
+
+check : ProjectContext -> List (Rule.Error e_)
+check { inReadme, exposed, inModules } =
+    let
+        checkLink error match =
+            let
+                { moduleName, kind } =
+                    match.parsed
+
+                moduleNameParts =
+                    let
+                        ( first, tail ) =
+                            moduleName
+                    in
+                    first :: tail
+            in
+            case kind of
+                ModuleLink ->
+                    if
+                        exposed
+                            |> Set.toList
+                            |> List.any
+                                (.moduleName
+                                    >> (==) moduleNameParts
+                                )
+                    then
+                        []
+
+                    else
+                        [ error
+                            { message = moduleInLinkNotExposed
+                            , details = linkPointsToNonExistentMemberDetails
+                            }
+                            match.range
+                        ]
+
+                DefinitionLink definition ->
+                    if
+                        exposed
+                            |> Set.toList
+                            |> List.any
+                                (\m ->
+                                    (m.moduleName == moduleNameParts)
+                                        && (m.exposedDefinitions
+                                                |> isExposed definition
+                                           )
+                                )
+                    then
+                        []
+
+                    else
+                        [ error
+                            { message = definitionInLinkNotExposedMessage
+                            , details = linkPointsToNonExistentMemberDetails
+                            }
+                            match.range
+                        ]
+    in
+    [ inReadme
+        |> Maybe.map
+            (\{ key, links } ->
+                links
+                    |> Set.toList
+                    |> List.concatMap
+                        (checkLink (Rule.errorForReadme key))
+            )
+        |> Maybe.withDefault []
+    , inModules
+        |> Set.toList
+        |> List.concatMap
+            (\{ key, links } ->
+                links
+                    |> Set.toList
+                    |> List.concatMap
+                        (checkLink (Rule.errorForModule key))
+            )
+    ]
+        |> List.concat
 
 
 definitionInLinkNotExposedMessage : String
