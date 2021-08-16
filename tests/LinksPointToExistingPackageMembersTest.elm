@@ -131,6 +131,31 @@ a =
                                     }
                                 ]
                     )
+                , test "in readme"
+                    (\() ->
+                        """module A exposing (a)
+
+a =
+    "a"
+"""
+                            |> Review.Test.runWithProjectData
+                                (Project.new
+                                    |> Project.addElmJson
+                                        (elmJson { exposedModules = [ "A" ] })
+                                    |> Project.addReadme
+                                        { path = "README.md"
+                                        , content = "See [`B`](B)."
+                                        }
+                                )
+                                rule
+                            |> Review.Test.expectErrorsForReadme
+                                [ Review.Test.error
+                                    { message = moduleInLinkNotExposed
+                                    , details = linkPointsToNonExistentMemberDetails
+                                    , under = "[`B`](B)"
+                                    }
+                                ]
+                    )
                 ]
             , test "module link because it isn't in exposed-modules"
                 (\() ->

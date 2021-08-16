@@ -83,6 +83,19 @@ rule =
                                 , links =
                                     content
                                         |> Parser.find linkParser
+                                        |> List.map
+                                            (\match ->
+                                                let
+                                                    indexedStartingAt1 start =
+                                                        { row = start.row + 1, column = start.column + 1 }
+                                                in
+                                                { match
+                                                    | range =
+                                                        { start = indexedStartingAt1 match.range.start
+                                                        , end = indexedStartingAt1 match.range.end
+                                                        }
+                                                }
+                                            )
                                         |> Set.fromList
                                 }
                                     |> Just
