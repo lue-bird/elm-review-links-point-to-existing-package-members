@@ -7,9 +7,10 @@ import Elm.Syntax.Module exposing (Module)
 import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.Range exposing (Range)
 import EverySet as Set exposing (EverySet)
+import JaroWinkler
 import ParserExtra as Parser
 import Review.Rule as Rule exposing (Rule)
-import SyntaxHelp exposing (Link, LinkKind(..), ModuleInfo, addLocation, docOfDeclaration, exposedModules, isExposed, isFileComment, linkParser, moduleInfo)
+import SyntaxHelp exposing (Link, LinkKind(..), ModuleInfo, addLocation, docOfDeclaration, exposedModules, isExposed, isFileComment, linkParser, moduleInfo, nameOfExpose)
 
 
 type alias Set a =
@@ -20,50 +21,6 @@ type alias Set a =
 --
 
 
-{-| Reports links to nonexistent package definitions or modules.
-
-    config =
-        [ LinksPointToExistingPackageMembers.rule
-        ]
-
-
-## Fails
-
-    module A exposing (a)
-
-    b =
-        "b"
-
-    {-| Not [`b`](A#b).
-    -}
-    a =
-        "a"
-
-Fails because `b` must be exposed.
-
-
-## Success
-
-    module A.And.B exposing (a, b)
-
-    b =
-        "b"
-
-    {-| Not [`b`](A-And-B#b).
-    -}
-    a =
-        "a"
-
-
-## Try it out
-
-You can try this rule out by running the following command:
-
-```bash
-elm-review --template lue-bird/elm-review-links-point-to-existing-package-members/example --rules LinksPointToExistingPackageMembers
-```
-
--}
 rule : Rule
 rule =
     Rule.newProjectRuleSchema "LinksPointToExistingPackageMembers"
@@ -292,6 +249,37 @@ exposedInModule (Node _ module_) context =
 check : ProjectContext -> List (Rule.Error e_)
 check { inReadme, exposed, inModules } =
     let
+        exposedMembers : Set String
+        exposedMembers =
+            exposed
+                |> Set.toList
+                |> List.concatMap
+                    (\{ moduleName, exposedDefinitions } ->
+                        let
+                            moduleNameString =
+                                moduleName |> String.join "."
+                        in
+                        case exposedDefinitions of
+                            Exposing.Explicit exposedDefs ->
+                                exposedDefs
+                                    |> List.map
+                                        (\(Node _ def) ->
+                                            moduleNameString ++ "." ++ nameOfExpose def
+                                        )
+                                    |> (::) moduleNameString
+
+                            Exposing.All _ ->
+                                -- we don't suggest stuff from exposing (..)
+                                [ moduleNameString ]
+                    )
+                |> Set.fromList
+
+        details moduleNameParts =
+            linkPointsToNonExistentMemberDetails
+                { exposed = exposedMembers |> Set.toList
+                , badLink = moduleNameParts |> String.join "."
+                }
+
         checkLink error match =
             let
                 { moduleName, kind } =
@@ -319,7 +307,7 @@ check { inReadme, exposed, inModules } =
                     else
                         [ error
                             { message = moduleInLinkNotExposed
-                            , details = linkPointsToNonExistentMemberDetails
+                            , details = details moduleNameParts
                             }
                             match.range
                         ]
@@ -341,7 +329,7 @@ check { inReadme, exposed, inModules } =
                     else
                         [ error
                             { message = definitionInLinkNotExposedMessage
-                            , details = linkPointsToNonExistentMemberDetails
+                            , details = details moduleNameParts
                             }
                             match.range
                         ]
@@ -378,6 +366,15 @@ moduleInLinkNotExposed =
     "The link points to a module that isn't listed in \"exposed-modules\"."
 
 
-linkPointsToNonExistentMemberDetails : List String
-linkPointsToNonExistentMemberDetails =
-    [ "Links are only useful when they point to exposed package members." ]
+linkPointsToNonExistentMemberDetails :
+    { exposed : List String, badLink : String }
+    -> List String
+linkPointsToNonExistentMemberDetails { exposed, badLink } =
+    [ "Links are only useful when they point to exposed package members."
+    , "Maybe you meant one of those: "
+        ++ (exposed
+                |> List.sortBy (JaroWinkler.similarity badLink)
+                |> List.take 4
+                |> String.join ", "
+           )
+    ]

@@ -100,14 +100,18 @@ a =
                             |> Review.Test.expectErrors
                                 [ Review.Test.error
                                     { message = definitionInLinkNotExposedMessage
-                                    , details = linkPointsToNonExistentMemberDetails
+                                    , details =
+                                        linkPointsToNonExistentMemberDetails
+                                            { exposed = [ "A.And.B", "A.And.B.a" ]
+                                            , badLink = "A.And.B.b"
+                                            }
                                     , under = "[`b`](A-And-B#b)"
                                     }
                                 ]
                     )
                 , test "because its module isn't in exposed-modules"
                     (\() ->
-                        """module A.And.B exposing (a)
+                        """module A.And.B exposing (a, b)
 
 b =
     "b"
@@ -126,7 +130,11 @@ a =
                             |> Review.Test.expectErrors
                                 [ Review.Test.error
                                     { message = definitionInLinkNotExposedMessage
-                                    , details = linkPointsToNonExistentMemberDetails
+                                    , details =
+                                        linkPointsToNonExistentMemberDetails
+                                            { exposed = []
+                                            , badLink = "A.And.B.b"
+                                            }
                                     , under = "[`b`](A-And-B#b)"
                                     }
                                 ]
@@ -152,7 +160,11 @@ a =
                         |> Review.Test.expectErrorsForReadme
                             [ Review.Test.error
                                 { message = moduleInLinkNotExposed
-                                , details = linkPointsToNonExistentMemberDetails
+                                , details =
+                                    linkPointsToNonExistentMemberDetails
+                                        { exposed = [ "A", "A.a" ]
+                                        , badLink = "B"
+                                        }
                                 , under = "[`B`](B)"
                                 }
                             ]
@@ -178,7 +190,11 @@ a =
                         |> Review.Test.expectErrors
                             [ Review.Test.error
                                 { message = moduleInLinkNotExposed
-                                , details = linkPointsToNonExistentMemberDetails
+                                , details =
+                                    linkPointsToNonExistentMemberDetails
+                                        { exposed = []
+                                        , badLink = "A.And.B"
+                                        }
                                 , under = "[`A.And.B`](A-And-B)"
                                 }
                             ]
@@ -205,7 +221,11 @@ a =
                         |> Review.Test.expectErrors
                             [ Review.Test.error
                                 { message = definitionInLinkNotExposedMessage
-                                , details = linkPointsToNonExistentMemberDetails
+                                , details =
+                                    linkPointsToNonExistentMemberDetails
+                                        { exposed = [ "A.And.B", "A.And.B.a" ]
+                                        , badLink = "A.And.B.b"
+                                        }
                                 , under = "[`b`](A-And-B#b)"
                                 }
                             ]
