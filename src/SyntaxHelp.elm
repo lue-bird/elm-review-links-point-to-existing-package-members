@@ -1,5 +1,7 @@
-module SyntaxHelp exposing (Link, LinkKind(..), ModuleInfo, addLocation, docOfDeclaration, isExposed, linkParser, moduleInfo)
+module SyntaxHelp exposing (Link, LinkKind(..), ModuleInfo, addLocation, docOfDeclaration, exposedModules, isExposed, linkParser, moduleInfo)
 
+import Elm.Module as Module
+import Elm.Project as Project
 import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Documentation exposing (Documentation)
 import Elm.Syntax.Exposing exposing (Exposing(..), TopLevelExpose(..))
@@ -86,6 +88,17 @@ nameOfExpose expose =
 
         TypeExpose { name } ->
             name
+
+
+exposedModules : Project.Exposed -> List Module.Name
+exposedModules exposed =
+    case exposed of
+        Project.ExposedList exposedList ->
+            exposedList
+
+        Project.ExposedDict fakeDict ->
+            fakeDict
+                |> List.concatMap (\( _, names ) -> names)
 
 
 addLocation : Location -> Location -> Location

@@ -3,10 +3,10 @@ module LinksPointToExistingPackageMembersTest exposing (all)
 import Elm.Project
 import Json.Decode
 import LinksPointToExistingPackageMembers exposing (rule)
+import LinksPointToExistingPackageMembers.NotExposed exposing (definitionInLinkNotExposedMessage, linkPointsToNonExistentMemberDetails, moduleInLinkNotExposed)
 import Review.Project as Project
 import Review.Test
 import Test exposing (Test, describe, test)
-import Testable exposing (definitionInLinkNotExposedMessage, linkPointsToNonExistentMemberDetails, moduleInLinkNotExposed)
 
 
 all : Test

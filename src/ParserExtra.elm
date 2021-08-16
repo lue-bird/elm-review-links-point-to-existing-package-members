@@ -4,8 +4,20 @@ import Elm.Syntax.Range exposing (Range)
 import Parser exposing ((|.), (|=), Parser)
 
 
-find : Parser a -> Parser (List { parsed : a, range : Range })
-find parser =
+find :
+    Parser a
+    -> String
+    -> List { parsed : a, range : Range }
+find parser string =
+    string
+        |> Parser.run (findParser parser)
+        |> Result.withDefault []
+
+
+findParser :
+    Parser a
+    -> Parser (List { parsed : a, range : Range })
+findParser parser =
     Parser.loop []
         (\links ->
             Parser.oneOf
