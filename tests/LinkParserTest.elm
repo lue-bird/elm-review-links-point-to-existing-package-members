@@ -32,6 +32,17 @@ suite =
                                 }
                             )
                 )
+            , test "alias definition link"
+                (\() ->
+                    "[`Error`](B#Error)"
+                        |> Parser.run linkParser
+                        |> Expect.equal
+                            (Ok
+                                { kind = DefinitionLink "Error"
+                                , moduleName = ( "B", [] )
+                                }
+                            )
+                )
             , test "module link 0"
                 (\() ->
                     "[`A.And.B`](A-And-B)"
