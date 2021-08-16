@@ -2,7 +2,6 @@ module LinksPointToExistingPackageMembers.NotExposed exposing (definitionInLinkN
 
 import Elm.Module as Module
 import Elm.Project as Project exposing (Project)
-import Elm.Syntax.Declaration exposing (Declaration)
 import Elm.Syntax.Exposing as Exposing
 import Elm.Syntax.Module exposing (Module)
 import Elm.Syntax.Node as Node exposing (Node(..))
