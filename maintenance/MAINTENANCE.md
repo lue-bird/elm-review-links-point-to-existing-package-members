@@ -12,48 +12,6 @@ We'll discuss
 
 This document and the set up created for you is aimed at helping you work and improving the quality of the package. You can however opt out of all of this if you encounter problems or it doesn't suit you for any reason. If that happens, please contact the `elm-review` maintainers so that they can work on improvements.
 
-
-## After creation
-
-Right after you have created the package, you should
-
-### 1. Install the `npm` dependencies
-
-```bash
-npm install
-```
-
-If you prefer using `yarn` or another package manager, you can do so, but you should update the 2 "Install npm dependencies" scripts in `.github/workflows/test.yml` so that they use your preferred package manager.
-
-Note that [`elm-tooling`](https://elm-tooling.github.io/elm-tooling-cli/) takes care of some of the Elm dependencies, notably `elm` and `elm-format`. Their versions are defined in the `elm-tooling.json` file, and are automatically installed through the `postinstall` script/hook in `package.json`.
-
-### 2. Set up `Git`
-
-```bash
-git init
-git add --all
-git commit --message="Initialize project"
-```
-
-### 3. Replace REPLACEME
-
-In some of the files, notably `elm.json`, `README.md` and the rule files that were created for you, you will find a few `REPLACEME`. You will need to replace all of these and by things that make sense in their individual context.
-
-Again, you can do this step at a later time if you prefer, but you will have to do these before publishing. You will be reminded to do this when running the tests.
-
-Note that you will also have to supply the `summary` field in the `elm.json`, which should be close to the same thing that you will write in the README.
-
-### 4. (Can be done later) Create the project on GitHub
-
-You can do this step at a later time if you prefer.
-When you do, consider to
-
-- Adding the `elm-review` tag, so that your project appears in [this list](https://github.com/topics/elm-review).
-- [Adding a code of conduct](https://docs.github.com/en/github/building-a-strong-community/adding-a-code-of-conduct-to-your-project)
-- [Adding issue and pull request templates](https://docs.github.com/en/github/building-a-strong-community/using-templates-to-encourage-useful-issues-and-pull-requests)
-- [Setting guidelines for repository contributors](https://docs.github.com/en/github/building-a-strong-community/setting-guidelines-for-repository-contributors)
-
-
 ## Writing rules
 
 You can read how to use `elm-review`'s API to write a rule [here](https://package.elm-lang.org/packages/jfmengels/elm-review/latest/Review-Rule).
