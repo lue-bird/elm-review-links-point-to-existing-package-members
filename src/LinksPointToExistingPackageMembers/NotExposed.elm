@@ -2,7 +2,6 @@ module LinksPointToExistingPackageMembers.NotExposed exposing (definitionInLinkN
 
 import Elm.Module as Module
 import Elm.Project as Project exposing (Project)
-import Elm.Syntax.Exposing as Exposing exposing (Exposing)
 import Elm.Syntax.Module exposing (Module)
 import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.Range exposing (Location, Range)
@@ -10,7 +9,7 @@ import EverySet as Set exposing (EverySet)
 import JaroWinkler
 import ParserExtra as Parser
 import Review.Rule as Rule exposing (Rule)
-import SyntaxHelp exposing (ExposingKind(..), Link, LinkKind(..), ModuleInfo, addLocation, docOfDeclaration, exposedModules, isExposed, isFileComment, linkParser, moduleInfo, nameOfExpose)
+import SyntaxHelp exposing (ExposingKind(..), Link, LinkKind(..), ModuleInfo, addLocation, docOfDeclaration, exposedModules, isExposed, isFileComment, linkParser, moduleInfo)
 
 
 type alias Set a =
