@@ -13,7 +13,8 @@
             "elm/parser": "1.1.0",
             "elm/project-metadata-utils": "1.0.2",
             "jfmengels/elm-review": "2.5.0",
-            "stil4m/elm-syntax": "7.2.6"
+            "stil4m/elm-syntax": "7.2.6",
+            "z5h/jaro-winkler": "1.0.2"
         },
         "indirect": {
             "elm/html": "1.0.0",
