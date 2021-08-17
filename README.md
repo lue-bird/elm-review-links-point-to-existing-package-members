@@ -1,6 +1,12 @@
 # elm-review-links-point-to-existing-package-members
 
-[`elm-review`](https://package.elm-lang.org/packages/jfmengels/elm-review/latest/) rules to check your links like `[Module.Special.definition](Module-Special#definition)` or `[Module.Special](Module-Special)` if the linked module or definition actually exists in the package.
+[`elm-review`](https://package.elm-lang.org/packages/jfmengels/elm-review/latest/) rules to check your links:
+
+- `[Module.Special](Module-Special)`,
+- `[Module.Special.definition](Module-Special#definition)` or
+- `[Module.definition](#definition)`
+
+Reports if the linked module or definition doesn't exists in the package.
 
 
 ## Provided rules
