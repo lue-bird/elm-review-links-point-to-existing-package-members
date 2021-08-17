@@ -1,15 +1,16 @@
-module SyntaxHelp exposing (Link, LinkKind(..), ModuleInfo, addLocation, docOfDeclaration, exposedModules, isExposed, isFileComment, linkParser, moduleInfo, nameOfExpose)
+module SyntaxHelp exposing (ExposingKind(..), Link, LinkKind(..), ModuleInfo, addLocation, docOfDeclaration, exposedModules, isExposed, isFileComment, linkParser, moduleInfo, nameOfExpose)
 
 import Elm.Module as Module
 import Elm.Project as Project
 import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Documentation exposing (Documentation)
-import Elm.Syntax.Exposing exposing (Exposing(..), TopLevelExpose(..))
+import Elm.Syntax.Exposing as Exposing exposing (Exposing, TopLevelExpose(..))
 import Elm.Syntax.Module exposing (Module(..))
 import Elm.Syntax.Node as Node exposing (Node)
 import Elm.Syntax.Range exposing (Location)
 import Parser exposing ((|.), (|=), Parser)
 import Parser.Extras as Parser
+import ParserExtra as Parser
 
 
 docOfDeclaration : Declaration -> Maybe (Node Documentation)
@@ -34,9 +35,14 @@ docOfDeclaration declaration =
             Nothing
 
 
+type ExposingKind
+    = All
+    | Explicit
+
+
 type alias ModuleInfo =
     { moduleName : List String
-    , exposedDefinitions : Exposing
+    , exposedDefinitions : ( ExposingKind, List String )
     }
 
 
@@ -45,7 +51,16 @@ moduleInfo module_ =
     let
         extract { moduleName, exposingList } =
             { moduleName = moduleName |> Node.value
-            , exposedDefinitions = exposingList |> Node.value
+            , exposedDefinitions =
+                case exposingList |> Node.value of
+                    Exposing.All _ ->
+                        ( All, [] )
+
+                    Exposing.Explicit list ->
+                        ( Explicit
+                        , list
+                            |> List.map (nameOfExpose << Node.value)
+                        )
             }
     in
     case module_ of
@@ -59,19 +74,14 @@ moduleInfo module_ =
             extract data
 
 
-isExposed : String -> Exposing -> Bool
+isExposed : String -> ( ExposingKind, List String ) -> Bool
 isExposed definition exposings =
     case exposings of
-        All _ ->
+        ( All, _ ) ->
             True
 
-        Explicit list ->
-            list
-                |> List.any
-                    (Node.value
-                        >> nameOfExpose
-                        >> (==) definition
-                    )
+        ( Explicit, list ) ->
+            list |> List.member definition
 
 
 nameOfExpose : TopLevelExpose -> String
@@ -113,46 +123,54 @@ addLocation aRange bRange =
     }
 
 
+{-| `moduleName = []` for links like `[`a`](#a)`.
+-}
 type alias Link =
-    { moduleName : ( String, List String )
+    { moduleName : List String
     , kind : LinkKind
     }
 
 
+{-|
+
+  - `DefinitionLink "a"` for links like `[`a`](#a)` or `[`a`](A#a)`.
+  - `ModuleLink` for links like `[`A.And.B`](A-And-B)`.
+
+-}
 type LinkKind
     = ModuleLink
     | DefinitionLink String
 
 
-nameParser : Parser ()
-nameParser =
-    Parser.chompWhile
-        (\c -> Char.isAlphaNum c || c == '_')
+nameParser : { first : Char -> Bool } -> Parser String
+nameParser test =
+    Parser.succeed ()
+        |. Parser.chompIf
+            (\c -> test.first c && Char.isAlphaNum c)
+        |. Parser.chompWhile
+            (\c -> Char.isAlphaNum c || c == '_')
+        |> Parser.getChompedString
 
 
+{-| See [`Link`](#Link).
+-}
 linkParser : Parser Link
 linkParser =
     Parser.succeed
-        (\firstModulePart modulePartsAfter kind ->
-            { moduleName = ( firstModulePart, modulePartsAfter )
-            , kind = kind
-            }
+        (\moduleName kind ->
+            { moduleName = moduleName, kind = kind }
         )
-        |. Parser.symbol "["
-        |. Parser.chompUntil "]"
-        |. Parser.symbol "]("
-        |= Parser.getChompedString nameParser
-        |= Parser.many
-            (Parser.succeed identity
-                |. Parser.symbol "-"
-                |= (nameParser
-                        |> Parser.getChompedString
-                   )
-            )
+        |. Parser.brackets (Parser.chompUntil "]")
+        |. Parser.symbol "("
+        |= Parser.manySeparated
+            { by = "-"
+            , item = nameParser { first = Char.isUpper }
+            }
         |= Parser.oneOf
             [ Parser.succeed DefinitionLink
                 |. Parser.symbol "#"
-                |= Parser.getChompedString (Parser.chompUntil ")")
-            , Parser.succeed ModuleLink
+                |= nameParser { first = \_ -> True }
                 |. Parser.symbol ")"
+            , Parser.succeed ModuleLink
+                |. Parser.token ")"
             ]

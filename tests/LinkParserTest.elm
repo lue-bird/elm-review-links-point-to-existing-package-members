@@ -17,7 +17,7 @@ suite =
                         |> Expect.equal
                             (Ok
                                 { kind = DefinitionLink "gogey"
-                                , moduleName = ( "A", [ "B", "C" ] )
+                                , moduleName = [ "A", "B", "C" ]
                                 }
                             )
                 )
@@ -28,7 +28,7 @@ suite =
                         |> Expect.equal
                             (Ok
                                 { kind = DefinitionLink "b"
-                                , moduleName = ( "B", [] )
+                                , moduleName = [ "B" ]
                                 }
                             )
                 )
@@ -39,7 +39,18 @@ suite =
                         |> Expect.equal
                             (Ok
                                 { kind = DefinitionLink "Error"
-                                , moduleName = ( "B", [] )
+                                , moduleName = [ "B" ]
+                                }
+                            )
+                )
+            , test "definition link without module name"
+                (\() ->
+                    "[`a`](#a)"
+                        |> Parser.run linkParser
+                        |> Expect.equal
+                            (Ok
+                                { kind = DefinitionLink "a"
+                                , moduleName = []
                                 }
                             )
                 )
@@ -50,7 +61,7 @@ suite =
                         |> Expect.equal
                             (Ok
                                 { kind = ModuleLink
-                                , moduleName = ( "A", [ "And", "B" ] )
+                                , moduleName = [ "A", "And", "B" ]
                                 }
                             )
                 )
@@ -61,7 +72,7 @@ suite =
                         |> Expect.equal
                             (Ok
                                 { kind = ModuleLink
-                                , moduleName = ( "A", [] )
+                                , moduleName = [ "A" ]
                                 }
                             )
                 )

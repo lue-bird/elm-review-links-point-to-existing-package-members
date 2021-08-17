@@ -3,7 +3,7 @@ module LinksPointToExistingPackageMembersTest exposing (all)
 import Elm.Project
 import Json.Decode
 import LinksPointToExistingPackageMembers exposing (rule)
-import LinksPointToExistingPackageMembers.NotExposed exposing (definitionInLinkNotExposedMessage, linkPointsToNonExistentMemberDetails, moduleInLinkNotExposed)
+import LinksPointToExistingPackageMembers.NotExposed exposing (definitionInLinkNotExposedMessage, linkPointsToNonExistentMemberDetails, moduleInLinkNotExposed, noModuleSpecifiedForDefinitionInLinkInReadme)
 import Review.Project as Project
 import Review.Test
 import Test exposing (Test, describe, test)
@@ -171,7 +171,7 @@ a =
                             ]
                 )
             ]
-        , test "in readme"
+        , test "in readme because link doesn't point to member"
             (\() ->
                 """module A exposing (a)
 
@@ -197,6 +197,38 @@ a =
                                     , badLink = "B"
                                     }
                             , under = "[`B`](B)"
+                            }
+                        ]
+            )
+        , test "in readme no module was specified for definition in link"
+            (\() ->
+                """module A exposing (a)
+
+a =
+    "a"
+"""
+                    |> Review.Test.runWithProjectData
+                        (Project.new
+                            |> Project.addElmJson
+                                (elmJson { exposedModules = [ "A" ] })
+                            |> Project.addReadme
+                                { path = "README.md"
+                                , content = "See [`a`](#a)."
+                                }
+                        )
+                        rule
+                    |> Review.Test.expectErrorsForReadme
+                        [ let
+                            { message, details } =
+                                noModuleSpecifiedForDefinitionInLinkInReadme
+                                    { exposed = [ "A", "A.a" ]
+                                    , badLink = "a"
+                                    }
+                          in
+                          Review.Test.error
+                            { message = message
+                            , details = details
+                            , under = "[`a`](#a)"
                             }
                         ]
             )

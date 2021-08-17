@@ -1,9 +1,12 @@
-module ParserExtra exposing (find)
+module ParserExtra exposing (find, manySeparated)
 
 import Elm.Syntax.Range exposing (Range)
 import Parser exposing ((|.), (|=), Parser)
+import Parser.Extras as Parser
 
 
+{-| `range` is relative to the string start (so 0,0).
+-}
 find :
     Parser a
     -> String
@@ -45,3 +48,21 @@ findParser parser =
                     |> Parser.map Parser.Done
                 ]
         )
+
+
+{-| 0 or more things directly separated by a string like "go-gi-ga".
+-}
+manySeparated :
+    { by : String
+    , item : Parser between_
+    }
+    -> Parser (List between_)
+manySeparated { by, item } =
+    Parser.sequence
+        { start = ""
+        , separator = by
+        , end = ""
+        , spaces = Parser.symbol ""
+        , item = item
+        , trailing = Parser.Forbidden
+        }
