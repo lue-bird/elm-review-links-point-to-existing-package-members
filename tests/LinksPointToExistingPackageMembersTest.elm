@@ -12,10 +12,17 @@ import Test exposing (Test, describe, test)
 all : Test
 all =
     describe "LinksPointToExistingPackageMembers"
-        [ describe "succeeds"
-            [ test "exposed function"
-                (\() ->
-                    """module A.And.B exposing (a, b)
+        [ succeeds
+        , fails
+        ]
+
+
+succeeds : Test
+succeeds =
+    describe "succeeds"
+        [ test "exposed function"
+            (\() ->
+                """module A.And.B exposing (a, b)
 
 b =
     "b"
@@ -25,17 +32,17 @@ b =
 a =
     "a"
 """
-                        |> Review.Test.runWithProjectData
-                            (Project.new
-                                |> Project.addElmJson
-                                    (elmJson { exposedModules = [ "A.And.B" ] })
-                            )
-                            rule
-                        |> Review.Test.expectNoErrors
-                )
-            , test "exposed alias"
-                (\() ->
-                    """module A.And.B exposing (a, B)
+                    |> Review.Test.runWithProjectData
+                        (Project.new
+                            |> Project.addElmJson
+                                (elmJson { exposedModules = [ "A.And.B" ] })
+                        )
+                        rule
+                    |> Review.Test.expectNoErrors
+            )
+        , test "exposed alias"
+            (\() ->
+                """module A.And.B exposing (a, B)
 
 type alias B =
     B
@@ -45,170 +52,73 @@ type alias B =
 a =
     "a"
 """
-                        |> Review.Test.runWithProjectData
-                            (Project.new
-                                |> Project.addElmJson
-                                    (elmJson { exposedModules = [ "A.And.B" ] })
-                            )
-                            rule
-                        |> Review.Test.expectNoErrors
-                )
-            , test "definition exposed in different module"
-                (\() ->
-                    [ """module A exposing (a)
+                    |> Review.Test.runWithProjectData
+                        (Project.new
+                            |> Project.addElmJson
+                                (elmJson { exposedModules = [ "A.And.B" ] })
+                        )
+                        rule
+                    |> Review.Test.expectNoErrors
+            )
+        , test "definition exposed in different module"
+            (\() ->
+                [ """module A exposing (a)
 
 {-| Not [`b`](B#b).
 -}
 a =
     "a"
 """
-                    , """module B exposing (b)
+                , """module B exposing (b)
 
 b =
     "b"
 """
-                    ]
-                        |> Review.Test.runOnModulesWithProjectData
-                            (Project.new
-                                |> Project.addElmJson
-                                    (elmJson { exposedModules = [ "A", "B" ] })
-                            )
-                            rule
-                        |> Review.Test.expectNoErrors
-                )
-            ]
-        , describe "fails"
-            [ describe "definition link"
-                [ test "because it isn't exposed"
-                    (\() ->
-                        """module A.And.B exposing (a)
-
-b =
-    "b"
-
-{-| Not [`b`](A-And-B#b).
--}
-a =
-    "a"
-"""
-                            |> Review.Test.runWithProjectData
-                                (Project.new
-                                    |> Project.addElmJson
-                                        (elmJson { exposedModules = [ "A.And.B" ] })
-                                )
-                                rule
-                            |> Review.Test.expectErrors
-                                [ Review.Test.error
-                                    { message = definitionInLinkNotExposedMessage
-                                    , details =
-                                        linkPointsToNonExistentMemberDetails
-                                            { exposed = [ "A.And.B", "A.And.B.a" ]
-                                            , badLink = "A.And.B.b"
-                                            }
-                                    , under = "[`b`](A-And-B#b)"
-                                    }
-                                ]
-                    )
-                , test "because its module isn't in exposed-modules"
-                    (\() ->
-                        """module A.And.B exposing (a, b)
-
-b =
-    "b"
-
-{-| Not [`b`](A-And-B#b).
--}
-a =
-    "a"
-"""
-                            |> Review.Test.runWithProjectData
-                                (Project.new
-                                    |> Project.addElmJson
-                                        (elmJson { exposedModules = [] })
-                                )
-                                rule
-                            |> Review.Test.expectErrors
-                                [ Review.Test.error
-                                    { message = definitionInLinkNotExposedMessage
-                                    , details =
-                                        linkPointsToNonExistentMemberDetails
-                                            { exposed = []
-                                            , badLink = "A.And.B.b"
-                                            }
-                                    , under = "[`b`](A-And-B#b)"
-                                    }
-                                ]
-                    )
                 ]
-            , test "in readme"
-                (\() ->
-                    """module A exposing (a)
-
-a =
-    "a"
-"""
-                        |> Review.Test.runWithProjectData
-                            (Project.new
-                                |> Project.addElmJson
-                                    (elmJson { exposedModules = [ "A" ] })
-                                |> Project.addReadme
-                                    { path = "README.md"
-                                    , content = "See [`B`](B)."
-                                    }
-                            )
-                            rule
-                        |> Review.Test.expectErrorsForReadme
-                            [ Review.Test.error
-                                { message = moduleInLinkNotExposed
-                                , details =
-                                    linkPointsToNonExistentMemberDetails
-                                        { exposed = [ "A", "A.a" ]
-                                        , badLink = "B"
-                                        }
-                                , under = "[`B`](B)"
-                                }
-                            ]
-                )
-            , test "module link because it isn't in exposed-modules"
-                (\() ->
-                    """module A.And.B exposing (a, b)
+                    |> Review.Test.runOnModulesWithProjectData
+                        (Project.new
+                            |> Project.addElmJson
+                                (elmJson { exposedModules = [ "A", "B" ] })
+                        )
+                        rule
+                    |> Review.Test.expectNoErrors
+            )
+        , test "exposed all"
+            (\() ->
+                """module A.And.B exposing (..)
 
 b =
     "b"
 
-{-| Not [`A.And.B`](A-And-B).
+{-| Not [`b`](A-And-B#b).
 -}
 a =
     "a"
 """
-                        |> Review.Test.runWithProjectData
-                            (Project.new
-                                |> Project.addElmJson
-                                    (elmJson { exposedModules = [] })
-                            )
-                            rule
-                        |> Review.Test.expectErrors
-                            [ Review.Test.error
-                                { message = moduleInLinkNotExposed
-                                , details =
-                                    linkPointsToNonExistentMemberDetails
-                                        { exposed = []
-                                        , badLink = "A.And.B"
-                                        }
-                                , under = "[`A.And.B`](A-And-B)"
-                                }
-                            ]
-                )
-            , test "in file comment"
+                    |> Review.Test.runWithProjectData
+                        (Project.new
+                            |> Project.addElmJson
+                                (elmJson { exposedModules = [ "A.And.B" ] })
+                        )
+                        rule
+                    |> Review.Test.expectNoErrors
+            )
+        ]
+
+
+fails : Test
+fails =
+    describe "fails"
+        [ describe "definition link"
+            [ test "because it isn't exposed"
                 (\() ->
                     """module A.And.B exposing (a)
 
-{-| Contains a and [`b`](A-And-B#b).
--}
-
 b =
     "b"
 
+{-| Not [`b`](A-And-B#b).
+-}
 a =
     "a"
 """
@@ -230,7 +140,127 @@ a =
                                 }
                             ]
                 )
+            , test "because its module isn't in exposed-modules"
+                (\() ->
+                    """module A.And.B exposing (a, b)
+
+b =
+    "b"
+
+{-| Not [`b`](A-And-B#b).
+-}
+a =
+    "a"
+"""
+                        |> Review.Test.runWithProjectData
+                            (Project.new
+                                |> Project.addElmJson
+                                    (elmJson { exposedModules = [] })
+                            )
+                            rule
+                        |> Review.Test.expectErrors
+                            [ Review.Test.error
+                                { message = definitionInLinkNotExposedMessage
+                                , details =
+                                    linkPointsToNonExistentMemberDetails
+                                        { exposed = []
+                                        , badLink = "A.And.B.b"
+                                        }
+                                , under = "[`b`](A-And-B#b)"
+                                }
+                            ]
+                )
             ]
+        , test "in readme"
+            (\() ->
+                """module A exposing (a)
+
+a =
+    "a"
+"""
+                    |> Review.Test.runWithProjectData
+                        (Project.new
+                            |> Project.addElmJson
+                                (elmJson { exposedModules = [ "A" ] })
+                            |> Project.addReadme
+                                { path = "README.md"
+                                , content = "See [`B`](B)."
+                                }
+                        )
+                        rule
+                    |> Review.Test.expectErrorsForReadme
+                        [ Review.Test.error
+                            { message = moduleInLinkNotExposed
+                            , details =
+                                linkPointsToNonExistentMemberDetails
+                                    { exposed = [ "A", "A.a" ]
+                                    , badLink = "B"
+                                    }
+                            , under = "[`B`](B)"
+                            }
+                        ]
+            )
+        , test "module link because it isn't in exposed-modules"
+            (\() ->
+                """module A.And.B exposing (a, b)
+
+b =
+    "b"
+
+{-| Not [`A.And.B`](A-And-B).
+-}
+a =
+    "a"
+"""
+                    |> Review.Test.runWithProjectData
+                        (Project.new
+                            |> Project.addElmJson
+                                (elmJson { exposedModules = [] })
+                        )
+                        rule
+                    |> Review.Test.expectErrors
+                        [ Review.Test.error
+                            { message = moduleInLinkNotExposed
+                            , details =
+                                linkPointsToNonExistentMemberDetails
+                                    { exposed = []
+                                    , badLink = "A.And.B"
+                                    }
+                            , under = "[`A.And.B`](A-And-B)"
+                            }
+                        ]
+            )
+        , test "in file comment"
+            (\() ->
+                """module A.And.B exposing (a)
+
+{-| Contains a and [`b`](A-And-B#b).
+-}
+
+b =
+    "b"
+
+a =
+    "a"
+"""
+                    |> Review.Test.runWithProjectData
+                        (Project.new
+                            |> Project.addElmJson
+                                (elmJson { exposedModules = [ "A.And.B" ] })
+                        )
+                        rule
+                    |> Review.Test.expectErrors
+                        [ Review.Test.error
+                            { message = definitionInLinkNotExposedMessage
+                            , details =
+                                linkPointsToNonExistentMemberDetails
+                                    { exposed = [ "A.And.B", "A.And.B.a" ]
+                                    , badLink = "A.And.B.b"
+                                    }
+                            , under = "[`b`](A-And-B#b)"
+                            }
+                        ]
+            )
         ]
 
 
