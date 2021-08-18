@@ -21,9 +21,9 @@ findParser :
     -> Parser (List { parsed : a, range : Range })
 findParser parser =
     Parser.loop []
-        (\links ->
+        (\parsed ->
             Parser.oneOf
-                [ Parser.succeed (\link -> link :: links)
+                [ Parser.succeed (\p -> p :: parsed)
                     |= (Parser.succeed
                             (\( startRow, startCol ) x ( endRow, endCol ) ->
                                 { parsed = x
@@ -39,10 +39,10 @@ findParser parser =
                             |= Parser.getPosition
                        )
                     |> Parser.map Parser.Loop
-                , Parser.succeed links
+                , Parser.succeed parsed
                     |. Parser.chompIf (\_ -> True)
                     |> Parser.map Parser.Loop
-                , Parser.succeed (List.reverse links)
+                , Parser.succeed (List.reverse parsed)
                     |. Parser.end
                     |> Parser.map Parser.Done
                 ]
