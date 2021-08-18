@@ -9,3 +9,7 @@
 - handles [...](#definition)
     - correctly reports using it in readme
 - suggests similar names in details
+
+#### 1.0.3
+
+- corrected bug when suggesting similar names in details
