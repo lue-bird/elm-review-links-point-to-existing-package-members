@@ -414,13 +414,15 @@ linkPointsToNonExistentMemberDetails :
     -> List String
 linkPointsToNonExistentMemberDetails { exposed, badLink } =
     [ "Links are only useful when they point to exposed package members."
-    , "Maybe you meant one of those: "
-        ++ (exposed
-                |> List.sortBy
-                    (\member ->
-                        1 - JaroWinkler.similarity badLink member
-                    )
-                |> List.take 3
-                |> String.join ", "
-           )
+    , [ "Maybe you meant one of those: "
+      , exposed
+            |> List.sortBy
+                (\member ->
+                    -(JaroWinkler.similarity badLink member)
+                )
+            |> List.take 3
+            |> String.join ", "
+      , "."
+      ]
+        |> String.concat
     ]
