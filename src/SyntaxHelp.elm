@@ -156,21 +156,21 @@ nameParser test =
 -}
 linkParser : Parser Link
 linkParser =
-    Parser.succeed
-        (\moduleName kind ->
-            { moduleName = moduleName, kind = kind }
-        )
+    Parser.succeed identity
         |. Parser.brackets (Parser.chompUntil "]")
-        |. Parser.symbol "("
-        |= Parser.manySeparated
-            { by = "-"
-            , item = nameParser { first = Char.isUpper }
-            }
-        |= Parser.oneOf
-            [ Parser.succeed DefinitionLink
-                |. Parser.symbol "#"
-                |= nameParser { first = \_ -> True }
-                |. Parser.symbol ")"
-            , Parser.succeed ModuleLink
-                |. Parser.token ")"
-            ]
+        |= Parser.parens
+            (Parser.succeed
+                (\moduleName kind ->
+                    { moduleName = moduleName, kind = kind }
+                )
+                |= Parser.manySeparated
+                    { by = "-"
+                    , item = nameParser { first = Char.isUpper }
+                    }
+                |= Parser.oneOf
+                    [ Parser.succeed DefinitionLink
+                        |. Parser.symbol "#"
+                        |= nameParser { first = \_ -> True }
+                    , Parser.succeed ModuleLink
+                    ]
+            )
