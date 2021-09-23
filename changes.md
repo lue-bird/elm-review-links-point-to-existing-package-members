@@ -15,3 +15,7 @@
 #### 1.0.3
 
 - corrected bug when suggesting similar names in details
+
+#### 1.0.4
+
+- add note about using [Docs.ReviewLinksAndSections from jfmengels/elm-review-documentation](https://dark.elm.dmy.fr/packages/jfmengels/elm-review-documentation/latest/Docs-ReviewLinksAndSections) instead
