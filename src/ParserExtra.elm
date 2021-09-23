@@ -11,13 +11,9 @@ find :
     -> String
     -> List { parsed : a, range : Range }
 find parser string =
-    case string |> Parser.run (findParser parser) of
-        Ok matches ->
-            matches
-
-        Err err ->
-            --Debug.todo (Debug.toString err)
-            []
+    string
+        |> Parser.run (findParser parser)
+        |> Result.withDefault []
 
 
 findParser :
