@@ -3,7 +3,7 @@
     "name": "lue-bird/elm-review-links-point-to-existing-package-members",
     "summary": "elm-review rule to check that links point to existing package members",
     "license": "MIT",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "exposed-modules": [
         "LinksPointToExistingPackageMembers"
     ],
