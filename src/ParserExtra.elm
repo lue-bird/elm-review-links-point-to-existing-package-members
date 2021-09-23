@@ -16,7 +16,8 @@ find parser string =
             matches
 
         Err err ->
-            Debug.todo (Debug.toString err)
+            --Debug.todo (Debug.toString err)
+            []
 
 
 findParser :
