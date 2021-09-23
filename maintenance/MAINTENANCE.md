@@ -1,3 +1,5 @@
+> **Use [Docs.ReviewLinksAndSections in jfmengels/elm-review-documentation](https://dark.elm.dmy.fr/packages/jfmengels/elm-review-documentation/latest/Docs-ReviewLinksAndSections) instead! It has more options, notices sections etc.**
+
 # How to maintain this package
 
 This document has been created along with the project through the `elm-review new-package` command.
