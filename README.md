@@ -1,3 +1,5 @@
+> **Use [Docs.ReviewLinksAndSections from jfmengels/elm-review-documentation](https://dark.elm.dmy.fr/packages/jfmengels/elm-review-documentation/latest/Docs-ReviewLinksAndSections) instead! It has more options, notices sections etc.**
+
 # elm-review-links-point-to-existing-package-members
 
 [`elm-review`](https://package.elm-lang.org/packages/jfmengels/elm-review/latest/) rules to check your links:
