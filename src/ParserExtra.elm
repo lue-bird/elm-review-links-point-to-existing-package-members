@@ -11,9 +11,12 @@ find :
     -> String
     -> List { parsed : a, range : Range }
 find parser string =
-    string
-        |> Parser.run (findParser parser)
-        |> Result.withDefault []
+    case string |> Parser.run (findParser parser) of
+        Ok matches ->
+            matches
+
+        Err err ->
+            Debug.todo (Debug.toString err)
 
 
 findParser :
@@ -21,14 +24,15 @@ findParser :
     -> Parser (List { parsed : a, range : Range })
 findParser parser =
     Parser.loop []
-        (\parsed ->
+        (\parsedList ->
             Parser.oneOf
-                [ Parser.succeed (\p -> p :: parsed)
+                [ Parser.succeed (\parsed -> parsed :: parsedList)
                     |= (Parser.succeed
-                            (\( startRow, startCol ) x ( endRow, endCol ) ->
-                                { parsed = x
+                            (\( startRow, startCol ) parsed ( endRow, endCol ) ->
+                                { parsed = parsed
                                 , range =
                                     -- parser position starts at ( 1 , 1 )
+                                    -- but we want the relative location
                                     { start = { row = startRow - 1, column = startCol - 1 }
                                     , end = { row = endRow - 1, column = endCol - 2 }
                                     }
@@ -39,10 +43,10 @@ findParser parser =
                             |= Parser.getPosition
                        )
                     |> Parser.map Parser.Loop
-                , Parser.succeed parsed
+                , Parser.succeed parsedList
                     |. Parser.chompIf (\_ -> True)
                     |> Parser.map Parser.Loop
-                , Parser.succeed (List.reverse parsed)
+                , Parser.succeed (List.reverse parsedList)
                     |. Parser.end
                     |> Parser.map Parser.Done
                 ]
